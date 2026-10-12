@@ -35,9 +35,9 @@ struct Camera {
 
 class SmartDevice {
 private:
-    void* device_data = nullptr;  ///< Указатель на конкретные данные устройства (Light/Thermostat/Camera)
-    DeviceType type = DeviceType::LIGHT;  ///< Тип устройства
-    bool is_online = false;       ///< Статус подключения к сети (true — онлайн)
+    void* device_data = nullptr;
+    DeviceType type = DeviceType::LIGHT;
+    bool is_online = false;
 
 public:
 
