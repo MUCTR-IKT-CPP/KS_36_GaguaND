@@ -2,8 +2,11 @@
 #include <clocale>
 #include <string>
 #include <utility>
+#include <cstddef>
 
-enum class DeviceType {
+using namespace std;
+
+enum DeviceType {
     LIGHT,
     THERMOSTAT,
     CAMERA
@@ -36,7 +39,7 @@ struct Camera {
 class SmartDevice {
 private:
     void* device_data = nullptr;
-    DeviceType type = DeviceType::LIGHT;
+    DeviceType type = LIGHT;
     bool is_online = false;
 
 public:
@@ -48,10 +51,10 @@ public:
      */
     SmartDevice(DeviceType t, bool online) : type(t), is_online(online), device_data(nullptr) {
         switch (type) {
-        case DeviceType::LIGHT:      device_data = new Light();      break;
-        case DeviceType::THERMOSTAT: device_data = new Thermostat(); break;
-        case DeviceType::CAMERA:     device_data = new Camera();     break;
-        default:                     device_data = nullptr;          break;
+        case LIGHT:      device_data = new Light();      break;
+        case THERMOSTAT: device_data = new Thermostat(); break;
+        case CAMERA:     device_data = new Camera();     break;
+        default:         device_data = nullptr;          break;
         }
     }
 
@@ -59,9 +62,9 @@ public:
     ~SmartDevice() {
         if (device_data) {
             switch (type) {
-            case DeviceType::LIGHT:      delete static_cast<Light*>(device_data);      break;
-            case DeviceType::THERMOSTAT: delete static_cast<Thermostat*>(device_data); break;
-            case DeviceType::CAMERA:     delete static_cast<Camera*>(device_data);     break;
+            case LIGHT:      delete (Light*)device_data;      break;
+            case THERMOSTAT: delete (Thermostat*)device_data; break;
+            case CAMERA:     delete (Camera*)device_data;     break;
             default: break;
             }
             device_data = nullptr;
@@ -74,14 +77,14 @@ public:
      */
     SmartDevice(const SmartDevice& other) : type(other.type), is_online(other.is_online), device_data(nullptr) {
         switch (type) {
-        case DeviceType::LIGHT:
-            device_data = new Light(*static_cast<Light*>(other.device_data));
+        case LIGHT:
+            device_data = new Light(*(Light*)other.device_data);
             break;
-        case DeviceType::THERMOSTAT:
-            device_data = new Thermostat(*static_cast<Thermostat*>(other.device_data));
+        case THERMOSTAT:
+            device_data = new Thermostat(*(Thermostat*)other.device_data);
             break;
-        case DeviceType::CAMERA:
-            device_data = new Camera(*static_cast<Camera*>(other.device_data));
+        case CAMERA:
+            device_data = new Camera(*(Camera*)other.device_data);
             break;
         default:
             device_data = nullptr;
@@ -99,9 +102,9 @@ public:
 
         if (device_data) {
             switch (type) {
-            case DeviceType::LIGHT:      delete static_cast<Light*>(device_data);      break;
-            case DeviceType::THERMOSTAT: delete static_cast<Thermostat*>(device_data); break;
-            case DeviceType::CAMERA:     delete static_cast<Camera*>(device_data);     break;
+            case LIGHT:      delete (Light*)device_data;      break;
+            case THERMOSTAT: delete (Thermostat*)device_data; break;
+            case CAMERA:     delete (Camera*)device_data;     break;
             default: break;
             }
             device_data = nullptr;
@@ -110,14 +113,14 @@ public:
         type = other.type;
         is_online = other.is_online;
         switch (type) {
-        case DeviceType::LIGHT:
-            device_data = new Light(*static_cast<Light*>(other.device_data));
+        case LIGHT:
+            device_data = new Light(*(Light*)other.device_data);
             break;
-        case DeviceType::THERMOSTAT:
-            device_data = new Thermostat(*static_cast<Thermostat*>(other.device_data));
+        case THERMOSTAT:
+            device_data = new Thermostat(*(Thermostat*)other.device_data);
             break;
-        case DeviceType::CAMERA:
-            device_data = new Camera(*static_cast<Camera*>(other.device_data));
+        case CAMERA:
+            device_data = new Camera(*(Camera*)other.device_data);
             break;
         default:
             device_data = nullptr;
@@ -135,8 +138,7 @@ public:
         other.device_data = nullptr;
     }
 
-    /*
-     * Оператор перемещающего присваивания.
+    /* Оператор перемещающего присваивания.
      *
      * @param other                  перемещаемый объект.
      * @return                       ссылка на текущий объект.
@@ -146,9 +148,9 @@ public:
 
         if (device_data) {
             switch (type) {
-            case DeviceType::LIGHT:      delete static_cast<Light*>(device_data);      break;
-            case DeviceType::THERMOSTAT: delete static_cast<Thermostat*>(device_data); break;
-            case DeviceType::CAMERA:     delete static_cast<Camera*>(device_data);     break;
+            case LIGHT:      delete (Light*)device_data;      break;
+            case THERMOSTAT: delete (Thermostat*)device_data; break;
+            case CAMERA:     delete (Camera*)device_data;     break;
             default: break;
             }
         }
@@ -169,23 +171,26 @@ private:
     SmartDevice** devices;
     size_t size;
     size_t capacity;
-    std::string name;
+    string name;
+
 public:
 
     /* Конструктор по умолчанию. */
     SmartHome() : devices(nullptr), size(0), capacity(0), name("Empty Home") {
-        std::cout << "Вызван конструктор по умолчанию\n";
+        cout << "Вызван конструктор по умолчанию\n";
     }
 
     /* Конструктор с параметрами.
      *
      * @param cap                     максимальный размер массива устройств.
-     * @param name                    имя дома.
+     * @param n                       имя дома.
      */
-    SmartHome(size_t cap, std::string name = "My Smart Home")
-        : size(0), capacity(cap > 0 ? cap : 0), name(std::move(name)) {
-        devices = (capacity > 0) ? new SmartDevice * [capacity] : nullptr;
-        std::cout << "Вызван конструктор с параметрами (Размер массива: " << capacity << ")\n";
+    SmartHome(size_t cap, string n = "My Smart Home")
+        : devices(nullptr), size(0), capacity(cap > 0 ? cap : 0), name(n) {
+        if (capacity > 0) {
+            devices = new SmartDevice * [capacity];
+        }
+        cout << "Вызван конструктор с параметрами (Размер массива: " << capacity << ")\n";
     }
 
     /* Конструктор копирования. Выполняет глубокое копирование системы.
@@ -193,22 +198,23 @@ public:
      * @param other                   копируемый объект.
      */
     SmartHome(const SmartHome& other)
-        : size(other.size), capacity(other.capacity), name(other.name + " (Копия)") {
-        devices = (capacity > 0) ? new SmartDevice * [capacity] : nullptr;
+        : devices(nullptr), size(other.size), capacity(other.capacity), name(other.name + " (Копия)") {
+        if (capacity > 0) {
+            devices = new SmartDevice * [capacity];
+        }
         for (size_t i = 0; i < size && i < capacity; ++i) {
             devices[i] = new SmartDevice(*other.devices[i]);
         }
-        std::cout << "Вызван конструктор копирования\n";
+        cout << "Вызван конструктор копирования\n";
     }
 
-    /*
-     * Оператор копирующего присваивания. Выполняет глубокое копирование системы.
+    /* Оператор копирующего присваивания. Выполняет глубокое копирование системы.
      *
      * @param other                  копируемый объект.
      * @return                       ссылка на текущий объект.
      */
     SmartHome& operator=(const SmartHome& other) {
-        std::cout << "Вызван оператор копирующего присваивания\n";
+        cout << "Вызван оператор копирующего присваивания\n";
         if (this == &other) return *this;
 
         for (size_t i = 0; i < size; ++i) delete devices[i];
@@ -218,7 +224,10 @@ public:
         capacity = other.capacity;
         name = other.name;
 
-        devices = (capacity > 0) ? new SmartDevice * [capacity] : nullptr;
+        devices = nullptr;
+        if (capacity > 0) {
+            devices = new SmartDevice * [capacity];
+        }
         for (size_t i = 0; i < size && i < capacity; ++i) {
             devices[i] = new SmartDevice(*other.devices[i]);
         }
@@ -230,20 +239,20 @@ public:
      * @param other                  перемещаемый объект.
      */
     SmartHome(SmartHome&& other) noexcept
-        : devices(other.devices), size(other.size), capacity(other.capacity), name(std::move(other.name)) {
+        : devices(other.devices), size(other.size), capacity(other.capacity), name(other.name) {
         other.devices = nullptr;
         other.size = 0;
         other.capacity = 0;
-        std::cout << "Вызван конструктор перемещения\n";
+        cout << "Вызван конструктор перемещения\n";
     }
 
-    /* Оператор перемещающего присваивания. Сначала освобождает свои ресурсы, затем забирает ресурсы другого объекта.
+    /* Оператор перемещающего присваивания.
      *
      * @param other                  перемещаемый объект.
      * @return                       ссылка на текущий объект.
      */
     SmartHome& operator=(SmartHome&& other) noexcept {
-        std::cout << "Вызван оператор перемещающего присваивания\n";
+        cout << "Вызван оператор перемещающего присваивания\n";
         if (this == &other) return *this;
 
         for (size_t i = 0; i < size; ++i) delete devices[i];
@@ -252,7 +261,7 @@ public:
         devices = other.devices;
         size = other.size;
         capacity = other.capacity;
-        name = std::move(other.name);
+        name = other.name;
 
         other.devices = nullptr;
         other.size = 0;
@@ -266,7 +275,7 @@ public:
             delete devices[i];
         }
         delete[] devices;
-        std::cout << "Деструктор очистил память для дома: " << name << "\n";
+        cout << "Деструктор очистил память для дома: " << name << "\n";
     }
 
     /* Добавление нового устройства в систему.
@@ -277,7 +286,7 @@ public:
      */
     bool addDevice(DeviceType type, bool online) {
         if (devices == nullptr || size >= capacity) {
-            std::cout << "Массив переполнен! Невозможно добавить устройство.\n";
+            cout << "Массив переполнен! Невозможно добавить устройство.\n";
             return false;
         }
         devices[size] = new SmartDevice(type, online);
@@ -291,29 +300,29 @@ public:
      */
     void sendCommand(size_t index) {
         if (index >= size) {
-            std::cout << "Устройства с индексом " << index << " не существует!\n";
+            cout << "Устройства с индексом " << index << " не существует!\n";
             return;
         }
         SmartDevice* dev = devices[index];
-        std::cout << "Отправка команды на устройство " << index << ": ";
+        cout << "Отправка команды на устройство " << index << ": ";
 
         switch (dev->type) {
-        case DeviceType::LIGHT: {
-            auto* light = static_cast<Light*>(dev->device_data);
+        case LIGHT: {
+            Light* light = (Light*)dev->device_data;
             light->brightness = 100;
-            std::cout << "Свет включен на максимальную яркость (" << light->brightness << "%)\n";
+            cout << "Свет включен на максимальную яркость (" << light->brightness << "%)\n";
             break;
         }
-        case DeviceType::THERMOSTAT: {
-            auto* thermo = static_cast<Thermostat*>(dev->device_data);
+        case THERMOSTAT: {
+            Thermostat* thermo = (Thermostat*)dev->device_data;
             thermo->temperature = 22.5;
-            std::cout << "Целевая температура изменена на " << thermo->temperature << "°C\n";
+            cout << "Целевая температура изменена на " << thermo->temperature << "°C\n";
             break;
         }
-        case DeviceType::CAMERA: {
-            auto* camera = static_cast<Camera*>(dev->device_data);
+        case CAMERA: {
+            Camera* camera = (Camera*)dev->device_data;
             camera->is_recording = true;
-            std::cout << "Запись камеры активирована\n";
+            cout << "Запись камеры активирована\n";
             break;
         }
         default:
@@ -321,23 +330,23 @@ public:
         }
     }
 
-    /* Проверка состояния (вывод информации об устройстве).
+    /* Проверка состояния.
      *
      * @param index                  индекс устройства в массиве.
      */
     void checkStatus(size_t index) const {
         if (index >= size) {
-            std::cout << "Индекс вне диапазона.\n";
+            cout << "Индекс вне диапазона.\n";
             return;
         }
         SmartDevice* dev = devices[index];
-        std::cout << "Устройство №" << index << " | Сеть: "
+        cout << "Устройство №" << index << " | Сеть: "
             << (dev->is_online ? "ONLINE" : "OFFLINE") << " | Тип: ";
         switch (dev->type) {
-        case DeviceType::LIGHT:      std::cout << "Освещение\n";         break;
-        case DeviceType::THERMOSTAT: std::cout << "Термостат\n";         break;
-        case DeviceType::CAMERA:     std::cout << "Камера наблюдения\n"; break;
-        default:                     std::cout << "Неизвестно\n";        break;
+        case LIGHT:      cout << "Освещение\n";         break;
+        case THERMOSTAT: cout << "Термостат\n";         break;
+        case CAMERA:     cout << "Камера наблюдения\n"; break;
+        default:         cout << "Неизвестно\n";        break;
         }
     }
 
@@ -366,14 +375,14 @@ public:
         return count;
     }
 
-    /* Удаление устройства по индексу с устранением «дыры» в массиве.
+    /* Удаление устройства по индексу с устранением дыры в массиве.
      *
      * @param index                   индекс устройства в массиве.
      * @return true                   если устройство удалено; false, если индекс неверный.
      */
     bool removeDevice(size_t index) {
         if (index >= size) {
-            std::cout << "Ошибка. Неверный индекс.\n";
+            cout << "Ошибка. Неверный индекс.\n";
             return false;
         }
         delete devices[index];
@@ -382,7 +391,7 @@ public:
         }
         devices[size - 1] = nullptr;
         size--;
-        std::cout << "Устройство на индексе " << index << " удалено.\n";
+        cout << "Устройство на индексе " << index << " удалено.\n";
         return true;
     }
 };
@@ -391,28 +400,28 @@ int main() {
 
     setlocale(LC_ALL, "Ru");
 
-    std::cout << "Инициализация системы умного дома\n";
+    cout << "Инициализация системы умного дома\n";
     SmartHome myHome(5, "Villa");
-    myHome.addDevice(DeviceType::LIGHT, true);
-    myHome.addDevice(DeviceType::THERMOSTAT, false);
-    myHome.addDevice(DeviceType::CAMERA, true);
+    myHome.addDevice(LIGHT, true);
+    myHome.addDevice(THERMOSTAT, false);
+    myHome.addDevice(CAMERA, true);
     myHome.checkStatus(0);
     myHome.checkStatus(1);
     myHome.checkStatus(2);
     myHome.sendCommand(0);
     myHome.sendCommand(1);
     myHome.sendCommand(2);
-    std::cout << "Всего термостатов в системе: " << myHome.countByType(DeviceType::THERMOSTAT) << "\n";
-    std::cout << "Устройств подключено к сети: " << myHome.countOnlineDevices() << "\n";
+    cout << "Всего термостатов в системе: " << myHome.countByType(THERMOSTAT) << "\n";
+    cout << "Устройств подключено к сети: " << myHome.countOnlineDevices() << "\n";
     myHome.removeDevice(1);
     myHome.checkStatus(1);
     myHome.sendCommand(1);
-    std::cout << "\nТестирование глубокого копирования (Rule of 5)\n";
+    cout << "\nТестирование глубокого копирования (Rule of 5)\n";
     {
-        std::cout << "Создание копии во внутреннем блоке\n";
+        cout << "Создание копии во внутреннем блоке\n";
         SmartHome temporaryCopy = myHome;
         temporaryCopy.checkStatus(0);
-        std::cout << "Выход из внутреннего блока (работа деструктора копии)\n";
+        cout << "Выход из внутреннего блока (работа деструктора копии)\n";
     }
     return 0;
 }
