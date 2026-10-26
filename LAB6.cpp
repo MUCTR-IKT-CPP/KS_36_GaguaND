@@ -1,8 +1,11 @@
 ﻿#include <iostream>
 #include <stdexcept>
 #include <vector>
+#include <memory>
+#include <limits>
+#include <clocale>
 
-/*Базовый класс банковского счета
+/*Абстрактный класс банковского счета
 *
 *@param balance  начальный баланс счета
 *@throws std::logic_error если баланс отрицательный
@@ -18,9 +21,10 @@ public:
 
     virtual void deposit(double amount) = 0;
     virtual void withdraw(double amount) = 0;
-    virtual void getBalance() const = 0;
-
+    virtual void printBalance() const = 0;
     virtual void applyInterest() {}
+
+    double getBalance() const { return balance_; }
 
 protected:
     double balance_;
@@ -43,11 +47,10 @@ public:
     /*Пополнение сберегательного счета
     *
     *@param amount  сумма пополнения
-    *@return ничего не возвращает
     */
     void deposit(double amount) override {
         if (amount <= 0) {
-            std::cout << "Сумма отрицательная\n";
+            std::cout << "Сумма должна быть положительной\n";
             return;
         }
         balance_ += amount;
@@ -57,11 +60,10 @@ public:
     /*Снятие средств со сберегательного счета
     *
     *@param amount  сумма снятия
-    *@return ничего не возвращает
     */
     void withdraw(double amount) override {
         if (amount <= 0) {
-            std::cout << "Сумма снятия отрицательная" << std::endl;
+            std::cout << "Сумма должна быть положительной" << std::endl;
             return;
         }
         if (amount > balance_) {
@@ -72,12 +74,18 @@ public:
         std::cout << "Со сберегательного счета снято " << amount << std::endl;
     }
 
-    /*Вывод баланса сберегательного счета
-    *
-    *@return ничего не возвращает
-    */
-    void getBalance() const override {
-        std::cout << "Баланс: " << balance_ << std::endl;
+    /*Вывод баланса сберегательного счета*/
+    void printBalance() const override {
+        std::cout << "Баланс: " << balance_
+            << " (ставка " << interestRate_ << "%)" << std::endl;
+    }
+
+    /*Начисление процентов на остаток*/
+    void applyInterest() override {
+        double interest = balance_ * interestRate_ / 100.0;
+        balance_ += interest;
+        std::cout << "Начислены проценты: " << interest
+            << " (" << interestRate_ << "%)" << std::endl;
     }
 
 private:
@@ -99,13 +107,10 @@ public:
     }
 
     /*Пополнение расчетного счета
-    *
-    *@param amount  сумма пополнения
-    *@return ничего не возвращает
     */
     void deposit(double amount) override {
         if (amount <= 0) {
-            std::cout << "Сумма пополнения отрицательная" << std::endl;
+            std::cout << "Сумма должна быть положительной" << std::endl;
             return;
         }
         balance_ += amount;
@@ -113,29 +118,25 @@ public:
     }
 
     /*Снятие средств с расчетного счета с учетом овердрафта
-    *
-    *@param amount  сумма снятия
-    *@return ничего не возвращает
     */
     void withdraw(double amount) override {
         if (amount <= 0) {
-            std::cout << "Сумма снятия отрицательная" << std::endl;
+            std::cout << "Сумма должна быть положительной" << std::endl;
             return;
         }
         if (amount > balance_ + overdraftLimit_) {
-            std::cout << "Превышен лимит" << std::endl;
+            std::cout << "Превышен лимит овердрафта" << std::endl;
             return;
         }
         balance_ -= amount;
-        std::cout << "С расчетного счета снято " << amount << " (включая овердрафт, если баланс < 0)" << std::endl;
+        std::cout << "С расчетного счета снято " << amount << std::endl;
     }
 
     /*Вывод баланса расчетного счета
-    *
-    *@return ничего не возвращает
     */
-    void getBalance() const override {
-        std::cout << "Баланс: " << balance_ << std::endl;
+    void printBalance() const override {
+        std::cout << "Баланс: " << balance_
+            << " (овердрафт до " << overdraftLimit_ << ")" << std::endl;
     }
 
 private:
@@ -157,13 +158,10 @@ public:
     }
 
     /*Пополнение кредитного счета
-    *
-    *@param amount  сумма пополнения
-    *@return ничего не возвращает
     */
     void deposit(double amount) override {
         if (amount <= 0) {
-            std::cout << "Сумма пополнения отрицательная\n";
+            std::cout << "Сумма должна быть положительной\n";
             return;
         }
         balance_ += amount;
@@ -171,13 +169,10 @@ public:
     }
 
     /*Снятие средств с кредитного счета с учетом кредитного лимита
-    *
-    *@param amount  сумма снятия
-    *@return ничего не возвращает
     */
     void withdraw(double amount) override {
         if (amount <= 0) {
-            std::cout << "Сумма снятия отрицательная" << std::endl;
+            std::cout << "Сумма должна быть положительной" << std::endl;
             return;
         }
         if (balance_ - amount < -creditLimit_) {
@@ -189,11 +184,10 @@ public:
     }
 
     /*Вывод баланса кредитного счета
-    *
-    *@return ничего не возвращает
     */
-    void getBalance() const override {
-        std::cout << "Баланс: " << balance_ << std::endl;
+    void printBalance() const override {
+        std::cout << "Баланс: " << balance_
+            << " (кредитный лимит " << creditLimit_ << ")" << std::endl;
     }
 
 private:
@@ -201,36 +195,33 @@ private:
 };
 
 /*Класс банка, управляющий коллекцией счетов
-*
-*@return ничего не возвращает
 */
 class Bank {
 public:
-    void addAccount(Account* account) {
-        if (account != nullptr) {
-            accounts_.push_back(account);
+    /*Добавление счета в банк
+    *
+    *@param account  unique_ptr на счет
+    */
+    void addAccount(std::unique_ptr<Account> account) {
+        if (account) {
+            accounts_.push_back(std::move(account));
             std::cout << "Аккаунт создан\n";
         }
     }
 
     /*Начисление процентов по всем счетам, поддерживающим это
-    *
-    *@return ничего не возвращает
     */
     void applyInterest() {
-        for (Account* acc : accounts_) {
+        for (auto& acc : accounts_) {
             acc->applyInterest();
         }
     }
 
-    /*Вывод балансов всех счетов с порядковыми номерами
-    *
-    *@return ничего не возвращает
-    */
+    /*Вывод балансов всех счетов с порядковыми номерами*/
     void showAllBalances() const {
         for (size_t i = 0; i < accounts_.size(); ++i) {
             std::cout << i + 1 << ". ";
-            accounts_[i]->getBalance();
+            accounts_[i]->printBalance();
         }
     }
 
@@ -242,24 +233,35 @@ public:
         return accounts_.size();
     }
 
-    /*Получение счета по индексу.
+    /*Получение счета по индексу
     *
-    *@param index  индекс счета (0-based).
-    *@return указатель на счет.
+    *@param index  индекс счета
+    *@return указатель на счет
+    *@throws std::out_of_range если индекс вне диапазона
     */
     Account* getAccount(size_t index) {
-        return accounts_[index];
-    }
-
-    ~Bank() {
-        for (Account* acc : accounts_) {
-            delete acc;
-        }
+        return accounts_.at(index).get();
     }
 
 private:
-    std::vector<Account*> accounts_;
+    std::vector<std::unique_ptr<Account>> accounts_;
 };
+
+static bool readInt(int& value) {
+    if (std::cin >> value) return true;
+    std::cin.clear();
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    std::cout << "Ошибка ввода. Введите целое число.\n";
+    return false;
+}
+
+static bool readDouble(double& value) {
+    if (std::cin >> value) return true;
+    std::cin.clear();
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    std::cout << "Ошибка ввода. Введите число.\n";
+    return false;
+}
 
 int main() {
     setlocale(LC_ALL, "Ru");
@@ -268,45 +270,53 @@ int main() {
     int choice = 0;
 
     while (true) {
-        std::cout << "1. Показать баланс всех счетов" << std::endl;
+        std::cout << "\n1. Показать баланс всех счетов" << std::endl;
         std::cout << "2. Открыть новый счет" << std::endl;
         std::cout << "3. Пополнить счет" << std::endl;
         std::cout << "4. Снять средства со счета" << std::endl;
         std::cout << "5. Начислить проценты (на сберегательные)" << std::endl;
         std::cout << "6. Выйти из программы" << std::endl;
         std::cout << "Выбор: ";
-        std::cin >> choice;
+        if (!readInt(choice)) continue;
 
         if (choice == 1) {
+            if (myBank.getAccountsCount() == 0) {
+                std::cout << "В банке нет счетов\n";
+                continue;
+            }
             myBank.showAllBalances();
         }
         else if (choice == 2) {
             int type = 0;
             std::cout << "\nВыберите тип счета:\n1 - Сберегательный\n2 - Расчетный\n3 - Кредитный\nВыбор: ";
-            std::cin >> type;
+            if (!readInt(type)) continue;
+            if (type < 1 || type > 3) {
+                std::cout << "Неверный тип счета\n";
+                continue;
+            }
 
             double balance = 0;
             std::cout << "Введите начальный баланс: ";
-            std::cin >> balance;
+            if (!readDouble(balance)) continue;
 
             try {
                 if (type == 1) {
                     double rate = 0;
                     std::cout << "Введите процентную ставку: ";
-                    std::cin >> rate;
-                    myBank.addAccount(new SavingsAccount(balance, rate));
+                    if (!readDouble(rate)) continue;
+                    myBank.addAccount(std::make_unique<SavingsAccount>(balance, rate));
                 }
                 else if (type == 2) {
                     double overdraft = 0;
                     std::cout << "Введите лимит овердрафта: ";
-                    std::cin >> overdraft;
-                    myBank.addAccount(new CheckingAccount(balance, overdraft));
+                    if (!readDouble(overdraft)) continue;
+                    myBank.addAccount(std::make_unique<CheckingAccount>(balance, overdraft));
                 }
-                else if (type == 3) {
+                else {
                     double creditLimit = 0;
                     std::cout << "Введите кредитный лимит: ";
-                    std::cin >> creditLimit;
-                    myBank.addAccount(new CreditAccount(balance, creditLimit));
+                    if (!readDouble(creditLimit)) continue;
+                    myBank.addAccount(std::make_unique<CreditAccount>(balance, creditLimit));
                 }
             }
             catch (const std::logic_error& e) {
@@ -320,14 +330,22 @@ int main() {
             }
 
             myBank.showAllBalances();
-            size_t accountIdx = 0;
-            std::cout << "Выберите номер счета (1-" << myBank.getAccountsCount() << "): ";
-            std::cin >> accountIdx;
 
-            Account* selectedAcc = myBank.getAccount(accountIdx - 1);
+            int accountIdx = 0;
+            std::cout << "Выберите номер счета (1-" << myBank.getAccountsCount() << "): ";
+            if (!readInt(accountIdx)) continue;
+
+            if (accountIdx < 1 ||
+                accountIdx > static_cast<int>(myBank.getAccountsCount())) {
+                std::cout << "Неверный номер счета\n";
+                continue;
+            }
+
+            Account* selectedAcc = myBank.getAccount(static_cast<size_t>(accountIdx - 1));
+
             double amount = 0;
             std::cout << "Введите сумму: ";
-            std::cin >> amount;
+            if (!readDouble(amount)) continue;
 
             if (choice == 3) {
                 selectedAcc->deposit(amount);
